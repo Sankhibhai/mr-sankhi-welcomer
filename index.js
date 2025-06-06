@@ -1,4 +1,3 @@
-// ✅ Fixed version of your index.js file
 require("dotenv").config();
 const {
   Client,
@@ -8,6 +7,7 @@ const {
   Collection,
 } = require("discord.js");
 const Canvas = require("canvas");
+const http = require("http");
 
 // Create Client
 const client = new Client({
@@ -34,6 +34,15 @@ require("./invite-tracker")(client);
 
 client.on("ready", async () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
+
+  // HTTP server start for Render port binding
+  const port = process.env.PORT || 3000;
+  http.createServer((req, res) => {
+    res.writeHead(200);
+    res.end("Bot is running");
+  }).listen(port, () => {
+    console.log(`Server listening on port ${port}`);
+  });
 });
 
 client.on("guildMemberAdd", async (member) => {
