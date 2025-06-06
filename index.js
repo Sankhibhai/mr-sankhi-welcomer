@@ -1,4 +1,3 @@
-require("dotenv").config();
 const { Client, GatewayIntentBits, AttachmentBuilder, Partials, Collection } = require("discord.js");
 const Canvas = require("canvas");
 
@@ -156,5 +155,3 @@ client.on("messageCreate", (message) => {
     message.reply("Haan boliye! MR.SANKHI-BOTS yahan hai madad ke liye! 🤖");
   }
 });
-
-client.login(process.env.TOKEN);
