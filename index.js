@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { Client, GatewayIntentBits, AttachmentBuilder, Partials, Collection } = require("discord.js");
 const Canvas = require("canvas");
 
@@ -20,7 +21,7 @@ client.xp = new Collection();
 require("./invite-tracker")(client);
 
 client.on("ready", async () => {
-  console.log(`🤖 Logged in as ${client.user.tag}`);
+  console.log(🤖 Logged in as ${client.user.tag});
 });
 
 // Welcome with invite info and XP update
@@ -44,7 +45,7 @@ client.on("guildMemberAdd", async (member) => {
 
   ctx.font = "bold 32px Sans";
   ctx.fillStyle = "#ffffff";
-  ctx.fillText(`Welcome, ${member.user.username}!`, 250, 125);
+  ctx.fillText(Welcome, ${member.user.username}!, 250, 125);
 
   const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: "welcome-image.png" });
 
@@ -53,7 +54,7 @@ client.on("guildMemberAdd", async (member) => {
 
   // Yahan server ka naam dynamic daala hai:
   channel.send({
-    content: `Hey ${member}, welcome to **${member.guild.name}**! 🎉\nInvited by **${inviterTag}**`,
+    content: Hey ${member}, welcome to **${member.guild.name}**! 🎉\nInvited by **${inviterTag}**,
     files: [attachment],
   });
 
@@ -69,7 +70,7 @@ client.on("guildMemberAdd", async (member) => {
 
     const xpChannel = member.guild.channels.cache.find(ch => ch.name === "sankhi-xp");
     if (xpChannel) {
-      xpChannel.send(`🎉 **${inviter.user.username}** ne ek user ko invite kiya!\nTotal XP: **${newXP}**, Level: **${level}**`);
+      xpChannel.send(🎉 **${inviter.user.username}** ne ek user ko invite kiya!\nTotal XP: **${newXP}**, Level: **${level}**);
     }
   }
 });
@@ -105,7 +106,7 @@ client.on("messageCreate", (message) => {
     const level = Math.floor(xp / 1000) + 1;
 
     message.channel.send(
-      `📊 **${targetUser.username}** ki XP hai **${xp}** aur Level hai **${level}** 🎯`
+      📊 **${targetUser.username}** ki XP hai **${xp}** aur Level hai **${level}** 🎯
     );
     return;
   }
@@ -113,7 +114,7 @@ client.on("messageCreate", (message) => {
   else if (msgLower === "!level") {
     const xp = client.xp.get(userId) || 0;
     const level = Math.floor(xp / 1000) + 1;
-    message.reply(`⭐ Aapka current level hai **${level}** aur XP hai **${xp}**.`);
+    message.reply(⭐ Aapka current level hai **${level}** aur XP hai **${xp}**.);
   }
 
   else if (msgLower === "!rank") {
@@ -122,7 +123,7 @@ client.on("messageCreate", (message) => {
     if (rank === 0) rank = "N/A";
     const xp = client.xp.get(userId) || 0;
     const level = Math.floor(xp / 1000) + 1;
-    message.reply(`🎖️ Aapka rank hai **${rank}** server me.\nLevel: **${level}**, XP: **${xp}**`);
+    message.reply(🎖️ Aapka rank hai **${rank}** server me.\nLevel: **${level}**, XP: **${xp}**);
   }
 
   else if (msgLower === "!topxp") {
@@ -135,7 +136,7 @@ client.on("messageCreate", (message) => {
       const member = message.guild.members.cache.get(userData[0]);
       if (!member) continue;
       const level = Math.floor(userData[1] / 1000) + 1;
-      description += `**${i + 1}. ${member.user.username}** - Level: **${level}**, XP: **${userData[1]}**\n`;
+      description += **${i + 1}. ${member.user.username}** - Level: **${level}**, XP: **${userData[1]}**\n;
     }
 
     if (!description) description = "XP data available nahi hai abhi.";
@@ -155,3 +156,5 @@ client.on("messageCreate", (message) => {
     message.reply("Haan boliye! MR.SANKHI-BOTS yahan hai madad ke liye! 🤖");
   }
 });
+
+client.login(process.env.TOKEN);
