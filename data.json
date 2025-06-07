@@ -1,0 +1,43 @@
+{
+  "users": {
+    "1252556391739035760": {
+      "xp": 41,
+      "missionsCompleted": [],
+      "shopItems": []
+    }
+  },
+  "missions": {
+    "dailyChat": {
+      "description": "Chat 50 messages in a day",
+      "xpReward": 200,
+      "active": true
+    },
+    "invite3": {
+      "description": "Invite 3 new members",
+      "xpReward": 300,
+      "active": true
+    },
+    "voice60": {
+      "description": "Spend 60 minutes in voice channels",
+      "xpReward": 250,
+      "active": true
+    }
+  },
+  "shopItems": {
+    "nicknameColor": {
+      "name": "Nickname Color Change",
+      "description": "Change your nickname color for 7 days",
+      "priceXP": 1000
+    },
+    "customRole": {
+      "name": "Custom Role",
+      "description": "Get a custom role with your chosen color",
+      "priceXP": 2000
+    },
+    "badge": {
+      "name": "Exclusive Badge",
+      "description": "Show off an exclusive badge next to your name",
+      "priceXP": 1500
+    }
+  }
+}
