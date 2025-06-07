@@ -7,9 +7,27 @@ const {
   Collection,
 } = require("discord.js");
 const Canvas = require("canvas");
-const http = require("http");
+const express = require("express");
+const fetch = require("node-fetch");
 
-// Create Client
+// Express app for uptime
+const app = express();
+app.get("/", (req, res) => res.send("MR.SANKHI-BOTS is alive!"));
+
+// Start HTTP server
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`🌐 Server listening on port ${port}`);
+});
+
+// Self-ping every 5 mins to stay alive on Render
+setInterval(() => {
+  fetch("https://your-render-url.onrender.com/").catch(() =>
+    console.log("Ping failed")
+  );
+}, 5 * 60 * 1000); // every 5 minutes
+
+// Discord client setup
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -29,20 +47,10 @@ const client = new Client({
 client.invites = new Collection();
 client.xp = new Collection();
 
-// Invite tracking logic
 require("./invite-tracker")(client);
 
 client.on("ready", async () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
-
-  // HTTP server start for Render port binding
-  const port = process.env.PORT || 3000;
-  http.createServer((req, res) => {
-    res.writeHead(200);
-    res.end("Bot is running");
-  }).listen(port, () => {
-    console.log(`Server listening on port ${port}`);
-  });
 });
 
 client.on("guildMemberAdd", async (member) => {
@@ -83,7 +91,6 @@ client.on("guildMemberAdd", async (member) => {
     files: [attachment],
   });
 
-  // XP for invite
   if (inviter && inviter.user) {
     const userId = inviter.user.id;
     const prevXP = client.xp.get(userId) || 0;
@@ -103,7 +110,7 @@ client.on("guildMemberAdd", async (member) => {
   }
 });
 
-client.on("messageCreate", (message) => {
+client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
   const userId = message.author.id;
@@ -118,7 +125,6 @@ client.on("messageCreate", (message) => {
   if (msgLower.startsWith("!xp")) {
     const mentionedUser = message.mentions.users.first();
     const targetUser = mentionedUser || message.author;
-
     const xp = client.xp.get(targetUser.id) || 0;
     const level = Math.floor(xp / 1000) + 1;
 
@@ -158,6 +164,28 @@ client.on("messageCreate", (message) => {
     };
 
     message.channel.send({ embeds: [embed] });
+  } else if (msgLower.startsWith("!transferxp")) {
+    const args = msg.split(" ");
+    const mention = message.mentions.users.first();
+    const amount = parseInt(args[2]);
+
+    if (!mention || isNaN(amount) || amount <= 0) {
+      return message.reply("❌ Usage: !transferxp @user amount");
+    }
+
+    const senderXP = client.xp.get(message.author.id) || 0;
+    if (senderXP < amount) {
+      return message.reply("❌ Aapke paas itni XP nahi hai!");
+    }
+
+    const receiverXP = client.xp.get(mention.id) || 0;
+
+    client.xp.set(message.author.id, senderXP - amount);
+    client.xp.set(mention.id, receiverXP + amount);
+
+    message.channel.send(
+      `✅ **${message.author.username}** ne **${mention.username}** ko **${amount} XP** transfer kiya!`
+    );
   } else if (msgLower.includes("@sankhi")) {
     message.reply("Haan boliye! MR.SANKHI-BOTS yahan hai madad ke liye! 🤖");
   }
