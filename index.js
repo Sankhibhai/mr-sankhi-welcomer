@@ -114,15 +114,24 @@ client.on("guildMemberAdd", async (member) => {
   }
 });
 
-// Message handling for XP, commands (!givexp, !buy nicknameColor)
+// Message handling for XP, commands (!xp, !givexp, !buy nicknameColor)
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
+
+  console.log(`Message received from ${message.author.tag}: ${message.content}`);
 
   const userId = message.author.id;
   const userData = dataManager.getUser(userId);
   const msg = message.content.trim();
   const msgLower = msg.toLowerCase();
   const args = msg.split(" ");
+
+  // Command: !xp
+  if (msgLower === "!xp") {
+    return message.channel.send(
+      `${message.author.username}, aapke paas abhi **${userData.xp || 0} XP** hai.`
+    );
+  }
 
   // Command: !givexp (owner only)
   if (msgLower.startsWith("!givexp")) {
@@ -141,11 +150,13 @@ client.on("messageCreate", async (message) => {
     targetData.xp = (targetData.xp || 0) + amount;
     dataManager.saveData();
 
-    return message.channel.send(`✅ ${targetUser.username} ko **${amount} XP** diya gaya hai!`);
+    return message.channel.send(
+      `✅ ${targetUser.username} ko **${amount} XP** diya gaya hai!`
+    );
   }
 
   // Command: !buy nicknameColor <color>
-  if (msgLower.startsWith("!buy") && args[1] === "nicknameColor") {
+  if (msgLower.startsWith("!buy") && args[1]?.toLowerCase() === "nicknamecolor") {
     const colorChoice = args[2]?.toLowerCase();
     const itemCost = 1000;
 
@@ -228,7 +239,9 @@ client.on("voiceStateUpdate", (oldState, newState) => {
 
         if (xpChannel) {
           xpChannel.send(
-            `🎤 ${member.user.username} ne voice chat me ${Math.floor(duration / 60)} minute bitaye aur ${xpToAdd} XP paya!`
+            `🎤 ${member.user.username} ne voice chat me ${Math.floor(
+              duration / 60
+            )} minute bitaye aur ${xpToAdd} XP paya!`
           );
         }
       }
