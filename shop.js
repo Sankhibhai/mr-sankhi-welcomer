@@ -1,21 +1,30 @@
-// shop.js
+// shop.js - XP Shop Items
 
-const shopItems = {
-  nicknameColor: {
-    name: "Nickname Color Change",
-    description: "Change your nickname color for 7 days",
-    priceXP: 1000,
+const shopItems = [
+  {
+    id: "nicknamecolor",
+    name: "Nickname Color (Red, Blue, Green)",
+    price: 1000,
+    description: "Apne nickname ka color badlo. Red, Blue, ya Green me se choose karo!",
   },
-  customRole: {
-    name: "Custom Role",
-    description: "Get a custom role with your chosen color",
-    priceXP: 2000,
+  {
+    id: "viprole",
+    name: "VIP Role",
+    price: 5000,
+    description: "Special VIP role jise tum server me enjoy kar sakte ho.",
   },
-  badge: {
-    name: "Exclusive Badge",
-    description: "Show off an exclusive badge next to your name",
-    priceXP: 1500,
+  {
+    id: "customemoji",
+    name: "Custom Emoji Use",
+    price: 3000,
+    description: "Server ke custom emojis use karne ka access pao.",
   },
-};
+  {
+    id: "title",
+    name: "Custom Title",
+    price: 2000,
+    description: "Apne username ke saath ek custom title lagao.",
+  },
+];
 
 module.exports = shopItems;
