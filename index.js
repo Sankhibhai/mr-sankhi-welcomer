@@ -5,6 +5,7 @@ const {
   AttachmentBuilder,
   Partials,
   Collection,
+  EmbedBuilder,
   PermissionsBitField,
 } = require("discord.js");
 const Canvas = require("canvas");
@@ -121,22 +122,26 @@ client.on("messageCreate", async (message) => {
     return message.channel.send(`${message.author.username}, aapke paas abhi **${userData.xp || 0} XP** hai.`);
   }
 
-  // !shop (only nicknamecolor)
+  // !shop
   if (msgLower === "!shop") {
-    const items = dataManager.getShopItems();
-    if (!items || items.length === 0) {
-      return message.channel.send("❌ Shop abhi khali hai.");
-    }
-
-    const embed = {
-      title: "🛒 SANKHI XP SHOP",
-      description: items.map((item) =>
-        `**🆔 ${item.id}** — ${item.name}\n💸 ${item.price} XP\n📌 ${item.description}`
-      ).join("\n\n"),
-      color: 0xffd700,
+    const item = {
+      priceXP: 1000,
+      name: "Nickname Color",
+      description: "Change your nickname color to Red, Blue, or Green."
     };
 
-    return message.channel.send({ embeds: [embed] });
+    const shopEmbed = new EmbedBuilder()
+      .setTitle("🛒 SANKHI XP SHOP")
+      .setDescription("Use `!buy nickname <red|blue|green>` to change your nickname color.")
+      .addFields([
+        {
+          name: `🆔 nickname — Nickname Color (Red, Blue, Green)`,
+          value: `💸 ${item.priceXP} XP\n📌 ${item.description}`,
+        }
+      ])
+      .setColor("Blue");
+
+    return message.channel.send({ embeds: [shopEmbed] });
   }
 
   // !givexp @user amount (owner only)
@@ -186,49 +191,61 @@ client.on("messageCreate", async (message) => {
     return message.channel.send(leaderboard);
   }
 
-  // !buy nicknamecolor <red|blue|green>
-  if (msgLower.startsWith("!buy") && args[1]?.toLowerCase() === "nicknamecolor") {
-    const colorChoice = args[2]?.toLowerCase();
-    const itemCost = 1000;
-    if (!["red", "blue", "green"].includes(colorChoice)) {
+  // !buy nickname <red|blue|green>
+  if (msgLower.startsWith("!buy")) {
+    const itemIdRaw = args[1]?.toLowerCase();
+    const option = args[2]?.toLowerCase();
+
+    if (!itemIdRaw || !option) {
+      return message.reply("❌ Usage: !buy nickname <red|blue|green>");
+    }
+
+    if (itemIdRaw !== "nickname") {
+      return message.reply("❌ Currently only `nickname` item is available to buy.");
+    }
+
+    // Check if color option is valid
+    if (!["red", "blue", "green"].includes(option)) {
       return message.reply("❌ Please choose: `red`, `blue`, ya `green`");
     }
 
+    // Check if user has enough XP (assuming 1000 XP cost)
+    const itemCost = 1000;
     if ((userData.xp || 0) < itemCost) {
       return message.reply(`❌ Aapke paas kaafi XP nahi hai! Required: ${itemCost} XP`);
     }
 
+    // Deduct XP and save
     userData.xp -= itemCost;
     dataManager.saveData();
 
+    // Role names for color roles
     const colorMap = {
       red: "Color - Red",
       blue: "Color - Blue",
       green: "Color - Green",
     };
-    const discordColorMap = {
-      red: "Red",
-      blue: "Blue",
-      green: "Green",
-    };
 
-    const roleName = colorMap[colorChoice];
-    let role = message.guild.roles.cache.find((r) => r.name === roleName);
+    // Find or create the role
+    let role = message.guild.roles.cache.find(r => r.name === colorMap[option]);
     if (!role) {
       role = await message.guild.roles.create({
-        name: roleName,
-        color: discordColorMap[colorChoice],
+        name: colorMap[option],
+        color: option,
         reason: `Color role created for ${message.author.username}`,
       });
     }
 
-    const allColorRoles = ["Color - Red", "Color - Blue", "Color - Green"];
+    // Remove other color roles from the user
+    const allColorRoles = Object.values(colorMap);
     await message.member.roles.remove(
-      message.member.roles.cache.filter((r) => allColorRoles.includes(r.name))
+      message.member.roles.cache.filter(r => allColorRoles.includes(r.name))
     );
+
+    // Add the new color role
     await message.member.roles.add(role);
 
-    return message.channel.send(`✅ Aapne **${roleName}** purchase kar liya hai! Enjoy your color! 🎨`);
+    return message.channel.send(`✅ Aapne **${colorMap[option]}** purchase kar liya hai! Enjoy your color! 🎨`);
   }
 });
 
