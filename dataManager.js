@@ -1,4 +1,3 @@
-// dataManager.js
 const fs = require('fs');
 const path = require('path');
 
@@ -38,7 +37,9 @@ function completeMission(userId, missionId) {
   const user = getUser(userId);
   if (!user.missionsCompleted.includes(missionId)) {
     user.missionsCompleted.push(missionId);
-    addXP(userId, data.missions[missionId].xpReward);
+    if(data.missions[missionId]) {
+      addXP(userId, data.missions[missionId].xpReward || 0);
+    }
     saveData();
     return true;
   }
@@ -59,18 +60,30 @@ function buyItem(userId, itemId) {
 }
 
 function initMissions(missionsList) {
-  data.missions = missionsList;
+  data.missions = {};
+  for (const mission of missionsList) {
+    data.missions[mission.id] = {
+      description: mission.description,
+      xpReward: mission.xpReward,
+      active: mission.active || true,
+    };
+  }
   saveData();
 }
 
 function initShopItems(shopList) {
-  data.shopItems = shopList;
+  data.shopItems = {};
+  for (const item of shopList) {
+    data.shopItems[item.id] = {
+      name: item.name,
+      description: item.description,
+      priceXP: item.price, // consistent naming
+    };
+  }
   saveData();
 }
 
-// **Naya function add kar diya yahan:**
 function getAllUsers() {
-  // Bas users object return karna hai, jisme sabhi users ka data hai
   return data.users;
 }
 
@@ -84,6 +97,6 @@ module.exports = {
   initMissions,
   initShopItems,
   saveData,
-  data, // expose data for read-only use
-  getAllUsers,  // naya export bhi add kar diya
+  data,
+  getAllUsers,
 };
