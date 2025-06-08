@@ -26,7 +26,7 @@ app.get("/", (req, res) => res.send("MR.SANKHI-BOTS is alive!"));
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`🌐 Server running on port ${port}`));
 
-// Periodic ping to keep awake (Render, Replit etc.)
+// Periodic ping
 setInterval(() => {
   fetch("https://mr-sankhi-welcomer-1.onrender.com").catch(() => console.log("Ping failed"));
 }, 5 * 60 * 1000);
@@ -56,12 +56,12 @@ const voiceTimers = new Map();
 // Invite tracker
 require("./invite-tracker")(client);
 
-// Bot Ready event
+// Bot Ready
 client.on("ready", () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
 });
 
-// Welcome system with canvas image and inviter XP reward
+// Welcome system
 client.on("guildMemberAdd", async (member) => {
   try {
     const channel = member.guild.systemChannel;
@@ -100,7 +100,7 @@ client.on("guildMemberAdd", async (member) => {
   }
 });
 
-// Message-based XP system and commands
+// Message-based XP & commands
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
@@ -110,31 +110,36 @@ client.on("messageCreate", async (message) => {
   const msgLower = msg.toLowerCase();
   const args = msg.split(/\s+/);
 
-  // Word-based XP gain
+  // XP for chatting
   const wordCount = args.length;
   if (wordCount > 0) {
     dataManager.addXP(userId, wordCount);
   }
 
-  // Commands
+  // !xp
   if (msgLower === "!xp") {
     return message.channel.send(`${message.author.username}, aapke paas abhi **${userData.xp || 0} XP** hai.`);
   }
 
+  // !shop (only nicknamecolor)
   if (msgLower === "!shop") {
     const items = dataManager.getShopItems();
     if (!items || items.length === 0) {
       return message.channel.send("❌ Shop abhi khali hai.");
     }
 
-    let shopMessage = "🛒 **SANKHI XP SHOP**\n";
-    for (const item of items) {
-      shopMessage += `\n🆔 **${item.id}** — ${item.name} (${item.price} XP)`;
-    }
+    const embed = {
+      title: "🛒 SANKHI XP SHOP",
+      description: items.map((item) =>
+        `**🆔 ${item.id}** — ${item.name}\n💸 ${item.price} XP\n📌 ${item.description}`
+      ).join("\n\n"),
+      color: 0xffd700,
+    };
 
-    return message.channel.send(shopMessage);
+    return message.channel.send({ embeds: [embed] });
   }
 
+  // !givexp @user amount (owner only)
   if (msgLower.startsWith("!givexp")) {
     if (message.author.id !== OWNER_ID) return message.reply("❌ Ye command sirf bot owner ke liye hai.");
 
@@ -148,6 +153,7 @@ client.on("messageCreate", async (message) => {
     return message.channel.send(`✅ ${targetUser.username} ko **${amount} XP** diya gaya hai!`);
   }
 
+  // !giftxp @user amount
   if (msgLower.startsWith("!giftxp")) {
     const targetUser = message.mentions.users.first();
     const amount = parseInt(args[2]);
@@ -163,6 +169,7 @@ client.on("messageCreate", async (message) => {
     return message.channel.send(`🎁 ${message.author.username} ne ${targetUser.username} ko **${amount} XP** gift kiya hai!`);
   }
 
+  // !topxp
   if (msgLower === "!topxp") {
     const allUsers = Object.entries(dataManager.data.users || {});
     if (allUsers.length === 0) return message.channel.send("❌ Koi XP data available nahi hai.");
@@ -179,6 +186,7 @@ client.on("messageCreate", async (message) => {
     return message.channel.send(leaderboard);
   }
 
+  // !buy nicknamecolor <red|blue|green>
   if (msgLower.startsWith("!buy") && args[1]?.toLowerCase() === "nicknamecolor") {
     const colorChoice = args[2]?.toLowerCase();
     const itemCost = 1000;
@@ -224,20 +232,18 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-// Voice XP system - XP for time spent in voice channel
+// Voice XP
 client.on("voiceStateUpdate", (oldState, newState) => {
   if (newState.member?.user.bot) return;
   const userId = newState.id;
 
   if (!oldState.channel && newState.channel) {
-    // User joined voice channel
     voiceTimers.set(userId, Date.now());
   } else if (oldState.channel && !newState.channel) {
-    // User left voice channel
     const joinTime = voiceTimers.get(userId);
     if (joinTime) {
-      const duration = (Date.now() - joinTime) / 1000; // seconds
-      const xpToAdd = Math.floor(duration / 60) * 10; // 10 XP per minute
+      const duration = (Date.now() - joinTime) / 1000;
+      const xpToAdd = Math.floor(duration / 60) * 10;
       if (xpToAdd > 0) {
         dataManager.addXP(userId, xpToAdd);
 
@@ -252,10 +258,9 @@ client.on("voiceStateUpdate", (oldState, newState) => {
       voiceTimers.delete(userId);
     }
   } else if (oldState.channel && newState.channel && oldState.channel.id !== newState.channel.id) {
-    // User switched voice channels
     voiceTimers.set(userId, Date.now());
   }
 });
 
-// Bot login
+// Login
 client.login(process.env.TOKEN);
