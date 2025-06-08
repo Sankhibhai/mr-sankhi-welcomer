@@ -16,26 +16,21 @@ const shopItems = require("./shop");
 
 const OWNER_ID = "1276171538378522704";
 
-// Initialize missions and shop items from files
+// Init data
 dataManager.initMissions(missions);
 dataManager.initShopItems(shopItems);
 
-// Setup express server for keep-alive (if using Render/Heroku etc)
+// Express keep-alive
 const app = express();
 app.get("/", (req, res) => res.send("MR.SANKHI-BOTS is alive!"));
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`🌐 Server listening on port ${port}`);
-});
+app.listen(port, () => console.log(`🌐 Server running on port ${port}`));
 
-// Ping self to keep alive every 5 mins
 setInterval(() => {
-  fetch("https://mr-sankhi-welcomer-1.onrender.com").catch(() =>
-    console.log("Ping failed")
-  );
+  fetch("https://mr-sankhi-welcomer-1.onrender.com").catch(() => console.log("Ping failed"));
 }, 5 * 60 * 1000);
 
-// Create Discord client with necessary intents and partials
+// Discord client
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -53,20 +48,19 @@ const client = new Client({
   ],
 });
 
-// Custom collections for invites and xp tracking
 client.invites = new Collection();
 client.xp = new Collection();
 const voiceTimers = new Map();
 
-// Invite tracker module setup
+// Invite tracker
 require("./invite-tracker")(client);
 
-// When bot is ready
-client.on("ready", async () => {
+// On bot ready
+client.on("ready", () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
 });
 
-// Welcome new guild members with custom image + invite info + XP award
+// Welcome system
 client.on("guildMemberAdd", async (member) => {
   try {
     const channel = member.guild.systemChannel;
@@ -74,10 +68,7 @@ client.on("guildMemberAdd", async (member) => {
 
     const canvas = Canvas.createCanvas(700, 250);
     const ctx = canvas.getContext("2d");
-
-    const background = await Canvas.loadImage(
-      "https://i.ibb.co/ymv6RPRD/TO-MR-SANKHI-BOTS-3.png"
-    );
+    const background = await Canvas.loadImage("https://i.ibb.co/ymv6RPRD/TO-MR-SANKHI-BOTS-3.png");
     ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
     ctx.beginPath();
@@ -85,18 +76,14 @@ client.on("guildMemberAdd", async (member) => {
     ctx.closePath();
     ctx.clip();
 
-    const avatar = await Canvas.loadImage(
-      member.user.displayAvatarURL({ extension: "jpg" })
-    );
+    const avatar = await Canvas.loadImage(member.user.displayAvatarURL({ extension: "jpg" }));
     ctx.drawImage(avatar, 25, 25, 200, 200);
 
     ctx.font = "bold 32px Sans";
     ctx.fillStyle = "#ffffff";
     ctx.fillText(`Welcome, ${member.user.username}!`, 250, 125);
 
-    const attachment = new AttachmentBuilder(canvas.toBuffer(), {
-      name: "welcome-image.png",
-    });
+    const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: "welcome-image.png" });
 
     let inviter = client.invites.get(member.guild.id)?.get(member.id);
     let inviterTag = inviter ? inviter.user.tag : "Unknown";
@@ -106,34 +93,36 @@ client.on("guildMemberAdd", async (member) => {
       files: [attachment],
     });
 
-    if (inviter && inviter.user) {
-      dataManager.addXP(inviter.user.id, 100);
-    }
+    if (inviter?.user) dataManager.addXP(inviter.user.id, 100);
   } catch (err) {
-    console.error("Error in guildMemberAdd event:", err);
+    console.error("Error in guildMemberAdd:", err);
   }
 });
 
-// Message handling for XP, commands (!xp, !givexp, !buy nicknameColor, !topxp, !giftxp)
+// Message-based XP system
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
-
-  console.log(`Message received from ${message.author.tag}: ${message.content}`);
 
   const userId = message.author.id;
   const userData = dataManager.getUser(userId);
   const msg = message.content.trim();
   const msgLower = msg.toLowerCase();
-  const args = msg.split(" ");
+  const args = msg.split(/\s+/); // Split words
 
-  // Command: !xp
+  // XP per word
+  const wordCount = args.length;
+  if (wordCount > 0) {
+    dataManager.addXP(userId, wordCount);
+  }
+
+  // !xp command
   if (msgLower === "!xp") {
     return message.channel.send(
       `${message.author.username}, aapke paas abhi **${userData.xp || 0} XP** hai.`
     );
   }
 
-  // Command: !givexp (owner only)
+  // !givexp (owner only)
   if (msgLower.startsWith("!givexp")) {
     if (message.author.id !== OWNER_ID) {
       return message.reply("❌ Ye command sirf bot owner ke liye hai.");
@@ -141,7 +130,6 @@ client.on("messageCreate", async (message) => {
 
     const targetUser = message.mentions.users.first();
     const amount = parseInt(args[2]);
-
     if (!targetUser || isNaN(amount)) {
       return message.reply("❌ Usage: `!givexp @user amount`");
     }
@@ -150,12 +138,10 @@ client.on("messageCreate", async (message) => {
     targetData.xp = (targetData.xp || 0) + amount;
     dataManager.saveData();
 
-    return message.channel.send(
-      `✅ ${targetUser.username} ko **${amount} XP** diya gaya hai!`
-    );
+    return message.channel.send(`✅ ${targetUser.username} ko **${amount} XP** diya gaya hai!`);
   }
 
-  // Command: !giftxp @user amount
+  // !giftxp
   if (msgLower.startsWith("!giftxp")) {
     const targetUser = message.mentions.users.first();
     const amount = parseInt(args[2]);
@@ -172,13 +158,9 @@ client.on("messageCreate", async (message) => {
       return message.reply("❌ Aap apne aap ko XP nahi de sakte!");
     }
 
-    // Deduct from sender
     userData.xp -= amount;
-
-    // Add to receiver
     const targetData = dataManager.getUser(targetUser.id);
     targetData.xp = (targetData.xp || 0) + amount;
-
     dataManager.saveData();
 
     return message.channel.send(
@@ -186,15 +168,13 @@ client.on("messageCreate", async (message) => {
     );
   }
 
-  // Command: !topxp (list top 10 XP users)
+  // !topxp
   if (msgLower === "!topxp") {
     const allUsers = Object.entries(dataManager.data.users || {});
-
     if (allUsers.length === 0) {
       return message.channel.send("❌ Koi XP data available nahi hai.");
     }
 
-    // Sort by xp desc
     const sortedUsers = allUsers
       .sort((a, b) => (b[1].xp || 0) - (a[1].xp || 0))
       .slice(0, 10);
@@ -203,14 +183,14 @@ client.on("messageCreate", async (message) => {
     for (let i = 0; i < sortedUsers.length; i++) {
       const [uId, uData] = sortedUsers[i];
       const member = message.guild.members.cache.get(uId);
-      const username = member ? member.user.username : `User ID: ${uId}`;
+      const username = member?.user.username || `User ID: ${uId}`;
       leaderboard += `**${i + 1}.** ${username} — ${uData.xp || 0} XP\n`;
     }
 
     return message.channel.send(leaderboard);
   }
 
-  // Command: !buy nicknameColor <color>
+  // !buy nicknameColor
   if (msgLower.startsWith("!buy") && args[1]?.toLowerCase() === "nicknamecolor") {
     const colorChoice = args[2]?.toLowerCase();
     const itemCost = 1000;
@@ -239,7 +219,6 @@ client.on("messageCreate", async (message) => {
 
     const roleName = colorMap[colorChoice];
     let role = message.guild.roles.cache.find((r) => r.name === roleName);
-
     if (!role) {
       role = await message.guild.roles.create({
         name: roleName,
@@ -249,40 +228,26 @@ client.on("messageCreate", async (message) => {
     }
 
     const allColorRoles = ["Color - Red", "Color - Blue", "Color - Green"];
-    const member = message.member;
-
-    // Remove all other color roles
-    await member.roles.remove(
-      member.roles.cache.filter((r) => allColorRoles.includes(r.name))
+    await message.member.roles.remove(
+      message.member.roles.cache.filter((r) => allColorRoles.includes(r.name))
     );
+    await message.member.roles.add(role);
 
-    // Add the chosen color role
-    await member.roles.add(role);
-
-    return message.channel.send(
-      `✅ Aapne **${roleName}** purchase kar liya hai! Enjoy your color! 🎨`
-    );
+    return message.channel.send(`✅ Aapne **${roleName}** purchase kar liya hai! Enjoy your color! 🎨`);
   }
-
-  // Random XP gain on every message (5-10 XP)
-  const randomXP = Math.floor(Math.random() * 6) + 5;
-  dataManager.addXP(userId, randomXP);
 });
 
-// Voice channel XP system
+// Voice XP system
 client.on("voiceStateUpdate", (oldState, newState) => {
-  if (newState.member.user.bot) return;
-
+  if (newState.member?.user.bot) return;
   const userId = newState.id;
 
   if (!oldState.channel && newState.channel) {
-    // User joined voice channel
     voiceTimers.set(userId, Date.now());
   } else if (oldState.channel && !newState.channel) {
-    // User left voice channel
     const joinTime = voiceTimers.get(userId);
     if (joinTime) {
-      const duration = (Date.now() - joinTime) / 1000; // seconds
+      const duration = (Date.now() - joinTime) / 1000;
       const xpToAdd = Math.floor(duration / 60) * 10; // 10 XP per minute
 
       if (xpToAdd > 0) {
@@ -292,7 +257,7 @@ client.on("voiceStateUpdate", (oldState, newState) => {
         const member = guild.members.cache.get(userId);
         const xpChannel = guild.channels.cache.find((ch) => ch.name === "sankhi-xp");
 
-        if (xpChannel) {
+        if (xpChannel && member) {
           xpChannel.send(
             `🎤 ${member.user.username} ne voice chat me ${Math.floor(
               duration / 60
@@ -300,13 +265,17 @@ client.on("voiceStateUpdate", (oldState, newState) => {
           );
         }
       }
+
       voiceTimers.delete(userId);
     }
-  } else if (oldState.channel && newState.channel && oldState.channel.id !== newState.channel.id) {
-    // User switched voice channels
+  } else if (
+    oldState.channel &&
+    newState.channel &&
+    oldState.channel.id !== newState.channel.id
+  ) {
     voiceTimers.set(userId, Date.now());
   }
 });
 
-// Login the bot
+// Login
 client.login(process.env.TOKEN);
