@@ -17,22 +17,18 @@ const shopItems = require("./shop");
 
 const OWNER_ID = "1276171538378522704";
 
-// Init data
 dataManager.initMissions(missions);
 dataManager.initShopItems(shopItems);
 
-// Express keep-alive
 const app = express();
 app.get("/", (req, res) => res.send("MR.SANKHI-BOTS is alive!"));
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`🌐 Server running on port ${port}`));
+app.listen(port, () => console.log(`\uD83C\uDF10 Server running on port ${port}`));
 
-// Periodic ping
 setInterval(() => {
   fetch("https://mr-sankhi-welcomer-1.onrender.com").catch(() => console.log("Ping failed"));
 }, 5 * 60 * 1000);
 
-// Discord client setup
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -54,15 +50,12 @@ client.invites = new Collection();
 client.xp = new Collection();
 const voiceTimers = new Map();
 
-// Invite tracker
 require("./invite-tracker")(client);
 
-// Bot Ready
 client.on("ready", () => {
-  console.log(`🤖 Logged in as ${client.user.tag}`);
+  console.log(`\uD83E\uDD16 Logged in as ${client.user.tag}`);
 });
 
-// Welcome system
 client.on("guildMemberAdd", async (member) => {
   try {
     const channel = member.guild.systemChannel;
@@ -91,7 +84,7 @@ client.on("guildMemberAdd", async (member) => {
     let inviterTag = inviter ? inviter.user.tag : "Unknown";
 
     await channel.send({
-      content: `Hey ${member}, welcome to **${member.guild.name}**! 🎉\nInvited by **${inviterTag}**`,
+      content: `Hey ${member}, welcome to **${member.guild.name}**! \uD83C\uDF89\nInvited by **${inviterTag}**`,
       files: [attachment],
     });
 
@@ -101,7 +94,6 @@ client.on("guildMemberAdd", async (member) => {
   }
 });
 
-// Message-based XP & commands
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
@@ -111,18 +103,15 @@ client.on("messageCreate", async (message) => {
   const msgLower = msg.toLowerCase();
   const args = msg.split(/\s+/);
 
-  // XP for chatting
   const wordCount = args.length;
   if (wordCount > 0) {
     dataManager.addXP(userId, wordCount);
   }
 
-  // !xp
   if (msgLower === "!xp") {
     return message.channel.send(`${message.author.username}, aapke paas abhi **${userData.xp || 0} XP** hai.`);
   }
 
-  // !shop
   if (msgLower === "!shop") {
     const item = {
       priceXP: 1000,
@@ -131,12 +120,12 @@ client.on("messageCreate", async (message) => {
     };
 
     const shopEmbed = new EmbedBuilder()
-      .setTitle("🛒 SANKHI XP SHOP")
+      .setTitle("\uD83D\uDED2 SANKHI XP SHOP")
       .setDescription("Use `!buy nickname <red|blue|green>` to change your nickname color.")
       .addFields([
         {
-          name: `🆔 nickname — Nickname Color (Red, Blue, Green)`,
-          value: `💸 ${item.priceXP} XP\n📌 ${item.description}`,
+          name: `\uD83C\uDD94 nickname — Nickname Color (Red, Blue, Green)`,
+          value: `\uD83D\uDCB8 ${item.priceXP} XP\n\uD83D\uDCCC ${item.description}`,
         }
       ])
       .setColor("Blue");
@@ -144,54 +133,6 @@ client.on("messageCreate", async (message) => {
     return message.channel.send({ embeds: [shopEmbed] });
   }
 
-  // !givexp @user amount (owner only)
-  if (msgLower.startsWith("!givexp")) {
-    if (message.author.id !== OWNER_ID) return message.reply("❌ Ye command sirf bot owner ke liye hai.");
-
-    const targetUser = message.mentions.users.first();
-    const amount = parseInt(args[2]);
-    if (!targetUser || isNaN(amount)) return message.reply("❌ Usage: `!givexp @user amount`");
-
-    const targetData = dataManager.getUser(targetUser.id);
-    targetData.xp = (targetData.xp || 0) + amount;
-    dataManager.saveData();
-    return message.channel.send(`✅ ${targetUser.username} ko **${amount} XP** diya gaya hai!`);
-  }
-
-  // !giftxp @user amount
-  if (msgLower.startsWith("!giftxp")) {
-    const targetUser = message.mentions.users.first();
-    const amount = parseInt(args[2]);
-    if (!targetUser || isNaN(amount) || amount <= 0) return message.reply("❌ Usage: `!giftxp @user amount`");
-
-    if ((userData.xp || 0) < amount) return message.reply("❌ Aapke paas itna XP nahi hai gift karne ke liye!");
-    if (targetUser.id === userId) return message.reply("❌ Aap apne aap ko XP nahi de sakte!");
-
-    userData.xp -= amount;
-    const targetData = dataManager.getUser(targetUser.id);
-    targetData.xp = (targetData.xp || 0) + amount;
-    dataManager.saveData();
-    return message.channel.send(`🎁 ${message.author.username} ne ${targetUser.username} ko **${amount} XP** gift kiya hai!`);
-  }
-
-  // !topxp
-  if (msgLower === "!topxp") {
-    const allUsers = Object.entries(dataManager.data.users || {});
-    if (allUsers.length === 0) return message.channel.send("❌ Koi XP data available nahi hai.");
-
-    const sortedUsers = allUsers.sort((a, b) => (b[1].xp || 0) - (a[1].xp || 0)).slice(0, 10);
-    let leaderboard = "🏆 **Top 10 XP Holders:**\n";
-    for (let i = 0; i < sortedUsers.length; i++) {
-      const [uId, uData] = sortedUsers[i];
-      const member = message.guild.members.cache.get(uId);
-      const username = member?.user.username || `User ID: ${uId}`;
-      leaderboard += `**${i + 1}.** ${username} — ${uData.xp || 0} XP\n`;
-    }
-
-    return message.channel.send(leaderboard);
-  }
-
-  // !buy nickname <red|blue|green>
   if (msgLower.startsWith("!buy")) {
     const itemIdRaw = args[1]?.toLowerCase();
     const option = args[2]?.toLowerCase();
@@ -204,52 +145,40 @@ client.on("messageCreate", async (message) => {
       return message.reply("❌ Currently only `nickname` item is available to buy.");
     }
 
-    // Check if color option is valid
     if (!["red", "blue", "green"].includes(option)) {
       return message.reply("❌ Please choose: `red`, `blue`, ya `green`");
     }
 
-    // Check if user has enough XP (assuming 1000 XP cost)
     const itemCost = 1000;
     if ((userData.xp || 0) < itemCost) {
       return message.reply(`❌ Aapke paas kaafi XP nahi hai! Required: ${itemCost} XP`);
     }
 
-    // Deduct XP and save
     userData.xp -= itemCost;
     dataManager.saveData();
 
-    // Role names for color roles
     const colorMap = {
-      red: "Color - Red",
-      blue: "Color - Blue",
-      green: "Color - Green",
+      red: "Colour - red",
+      blue: "Colour - blue",
+      green: "Colour - green",
     };
 
-    // Find or create the role
-    let role = message.guild.roles.cache.find(r => r.name === colorMap[option]);
+    const role = message.guild.roles.cache.find(r => r.name.toLowerCase() === colorMap[option].toLowerCase());
     if (!role) {
-      role = await message.guild.roles.create({
-        name: colorMap[option],
-        color: option,
-        reason: `Color role created for ${message.author.username}`,
-      });
+      return message.reply(`❌ Role \"${colorMap[option]}\" server me nahi mila.`);
     }
 
-    // Remove other color roles from the user
     const allColorRoles = Object.values(colorMap);
     await message.member.roles.remove(
       message.member.roles.cache.filter(r => allColorRoles.includes(r.name))
     );
 
-    // Add the new color role
     await message.member.roles.add(role);
 
-    return message.channel.send(`✅ Aapne **${colorMap[option]}** purchase kar liya hai! Enjoy your color! 🎨`);
+    return message.channel.send(`✅ Aapko **${colorMap[option]}** role mil gaya hai!`);
   }
 });
 
-// Voice XP
 client.on("voiceStateUpdate", (oldState, newState) => {
   if (newState.member?.user.bot) return;
   const userId = newState.id;
@@ -268,7 +197,7 @@ client.on("voiceStateUpdate", (oldState, newState) => {
         const member = guild.members.cache.get(userId);
         const xpChannel = guild.channels.cache.find((ch) => ch.name === "sankhi-xp");
         if (xpChannel && member) {
-          xpChannel.send(`🎤 ${member.user.username} ne voice chat me ${Math.floor(duration / 60)} minute bitaye aur ${xpToAdd} XP paya!`);
+          xpChannel.send(`\uD83C\uDFA4 ${member.user.username} ne voice chat me ${Math.floor(duration / 60)} minute bitaye aur ${xpToAdd} XP paya!`);
         }
       }
 
@@ -279,5 +208,4 @@ client.on("voiceStateUpdate", (oldState, newState) => {
   }
 });
 
-// Login
 client.login(process.env.TOKEN);
