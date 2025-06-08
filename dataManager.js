@@ -68,6 +68,12 @@ function initShopItems(shopList) {
   saveData();
 }
 
+// **Naya function add kar diya yahan:**
+function getAllUsers() {
+  // Bas users object return karna hai, jisme sabhi users ka data hai
+  return data.users;
+}
+
 loadData();
 
 module.exports = {
@@ -79,4 +85,5 @@ module.exports = {
   initShopItems,
   saveData,
   data, // expose data for read-only use
+  getAllUsers,  // naya export bhi add kar diya
 };
