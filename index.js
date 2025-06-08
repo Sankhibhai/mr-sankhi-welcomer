@@ -114,7 +114,7 @@ client.on("guildMemberAdd", async (member) => {
   }
 });
 
-// Message handling for XP, commands (!xp, !givexp, !buy nicknameColor)
+// Message handling for XP, commands (!xp, !givexp, !buy nicknameColor, !topxp, !giftxp)
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
@@ -153,6 +153,61 @@ client.on("messageCreate", async (message) => {
     return message.channel.send(
       `✅ ${targetUser.username} ko **${amount} XP** diya gaya hai!`
     );
+  }
+
+  // Command: !giftxp @user amount
+  if (msgLower.startsWith("!giftxp")) {
+    const targetUser = message.mentions.users.first();
+    const amount = parseInt(args[2]);
+
+    if (!targetUser || isNaN(amount) || amount <= 0) {
+      return message.reply("❌ Usage: `!giftxp @user amount`");
+    }
+
+    if ((userData.xp || 0) < amount) {
+      return message.reply("❌ Aapke paas itna XP nahi hai gift karne ke liye!");
+    }
+
+    if (targetUser.id === userId) {
+      return message.reply("❌ Aap apne aap ko XP nahi de sakte!");
+    }
+
+    // Deduct from sender
+    userData.xp -= amount;
+
+    // Add to receiver
+    const targetData = dataManager.getUser(targetUser.id);
+    targetData.xp = (targetData.xp || 0) + amount;
+
+    dataManager.saveData();
+
+    return message.channel.send(
+      `🎁 ${message.author.username} ne ${targetUser.username} ko **${amount} XP** gift kiya hai!`
+    );
+  }
+
+  // Command: !topxp (list top 10 XP users)
+  if (msgLower === "!topxp") {
+    const allUsers = Object.entries(dataManager.data.users || {});
+
+    if (allUsers.length === 0) {
+      return message.channel.send("❌ Koi XP data available nahi hai.");
+    }
+
+    // Sort by xp desc
+    const sortedUsers = allUsers
+      .sort((a, b) => (b[1].xp || 0) - (a[1].xp || 0))
+      .slice(0, 10);
+
+    let leaderboard = "🏆 **Top 10 XP Holders:**\n";
+    for (let i = 0; i < sortedUsers.length; i++) {
+      const [uId, uData] = sortedUsers[i];
+      const member = message.guild.members.cache.get(uId);
+      const username = member ? member.user.username : `User ID: ${uId}`;
+      leaderboard += `**${i + 1}.** ${username} — ${uData.xp || 0} XP\n`;
+    }
+
+    return message.channel.send(leaderboard);
   }
 
   // Command: !buy nicknameColor <color>
