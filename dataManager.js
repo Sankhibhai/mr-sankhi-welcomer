@@ -37,6 +37,26 @@ function addXP(userId, amount) {
   saveData();
 }
 
+// Remove XP from a user
+function removeXP(userId, amount) {
+  const user = getUser(userId);
+  user.xp -= amount;
+  if (user.xp < 0) user.xp = 0;
+  saveData();
+}
+
+// Set exact XP
+function setXP(userId, amount) {
+  const user = getUser(userId);
+  user.xp = amount;
+  saveData();
+}
+
+// Get user's XP
+function getXP(userId) {
+  return getUser(userId).xp;
+}
+
 // Complete a mission for a user
 function completeMission(userId, missionId) {
   const user = getUser(userId);
@@ -72,7 +92,7 @@ function initMissions(missionsList) {
     data.missions[mission.id] = {
       description: mission.description,
       xpReward: mission.xpReward,
-      active: mission.active !== false, // true by default
+      active: mission.active !== false,
     };
   }
   saveData();
@@ -85,13 +105,13 @@ function initShopItems(shopList) {
     data.shopItems[item.id] = {
       name: item.name,
       description: item.description,
-      priceXP: item.price, // standard field
+      priceXP: item.price,
     };
   }
   saveData();
 }
 
-// Convert shopItems object to array for looping
+// Convert shopItems object to array
 function getShopItems() {
   return Object.entries(data.shopItems).map(([id, item]) => ({
     id,
@@ -111,6 +131,9 @@ loadData();
 module.exports = {
   getUser,
   addXP,
+  removeXP,
+  setXP,
+  getXP,
   completeMission,
   buyItem,
   initMissions,
