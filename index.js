@@ -23,7 +23,7 @@ dataManager.initShopItems(shopItems);
 const app = express();
 app.get("/", (req, res) => res.send("MR.SANKHI-BOTS is alive!"));
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`\uD83C\uDF10 Server running on port ${port}`));
+app.listen(port, () => console.log(`🌐 Server running on port ${port}`));
 
 setInterval(() => {
   fetch("https://mr-sankhi-welcomer-1.onrender.com").catch(() => console.log("Ping failed"));
@@ -53,7 +53,7 @@ const voiceTimers = new Map();
 require("./invite-tracker")(client);
 
 client.on("ready", () => {
-  console.log(`\uD83E\uDD16 Logged in as ${client.user.tag}`);
+  console.log(`🤖 Logged in as ${client.user.tag}`);
 });
 
 client.on("guildMemberAdd", async (member) => {
@@ -84,7 +84,7 @@ client.on("guildMemberAdd", async (member) => {
     let inviterTag = inviter ? inviter.user.tag : "Unknown";
 
     await channel.send({
-      content: `Hey ${member}, welcome to **${member.guild.name}**! \uD83C\uDF89\nInvited by **${inviterTag}**`,
+      content: `Hey ${member}, welcome to **${member.guild.name}**! 🎉\nInvited by **${inviterTag}**`,
       files: [attachment],
     });
 
@@ -110,6 +110,48 @@ client.on("messageCreate", async (message) => {
 
   if (msgLower === "!xp") {
     return message.channel.send(`${message.author.username}, aapke paas abhi **${userData.xp || 0} XP** hai.`);
+  }
+
+  if (msgLower === "!topxp") {
+    const allUsers = dataManager.getAllUsers();
+    const topUsers = Object.entries(allUsers)
+      .sort(([, a], [, b]) => (b.xp || 0) - (a.xp || 0))
+      .slice(0, 10);
+
+    const leaderboard = topUsers.map(([id, data], i) => `**${i + 1}.** <@${id}> — ${data.xp || 0} XP`).join("\n");
+    return message.channel.send({
+      embeds: [
+        new EmbedBuilder()
+          .setTitle("\uD83C\uDFC6 Top XP Leaderboard")
+          .setDescription(leaderboard || "No data available.")
+          .setColor("Gold"),
+      ],
+    });
+  }
+
+  if (msgLower.startsWith("!givexp")) {
+    if (message.author.id !== OWNER_ID) return;
+    const member = message.mentions.members.first();
+    const amount = parseInt(args[2]);
+    if (!member || isNaN(amount)) {
+      return message.reply("❌ Usage: !givexp @user amount");
+    }
+    dataManager.addXP(member.id, amount);
+    return message.channel.send(`✅ ${member.user.username} ko ${amount} XP diya gaya hai!`);
+  }
+
+  if (msgLower.startsWith("!giftxp")) {
+    const member = message.mentions.members.first();
+    const amount = parseInt(args[2]);
+    if (!member || isNaN(amount)) {
+      return message.reply("❌ Usage: !giftxp @user amount");
+    }
+    if ((userData.xp || 0) < amount) {
+      return message.reply("❌ Aapke paas kaafi XP nahi hai!");
+    }
+    dataManager.removeXP(userId, amount);
+    dataManager.addXP(member.id, amount);
+    return message.channel.send(`✅ Aapne ${member.user.username} ko ${amount} XP gift kiya!`);
   }
 
   if (msgLower === "!shop") {
