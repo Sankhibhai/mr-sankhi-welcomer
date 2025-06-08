@@ -9,6 +9,7 @@ let data = {
   shopItems: {} // itemId: { name, description, priceXP }
 };
 
+// Load data from file
 function loadData() {
   if (fs.existsSync(dataPath)) {
     const raw = fs.readFileSync(dataPath);
@@ -16,10 +17,12 @@ function loadData() {
   }
 }
 
+// Save data to file
 function saveData() {
   fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
 }
 
+// Get or create user
 function getUser(userId) {
   if (!data.users[userId]) {
     data.users[userId] = { xp: 0, missionsCompleted: [], shopItems: [] };
@@ -27,17 +30,19 @@ function getUser(userId) {
   return data.users[userId];
 }
 
+// Add XP to a user
 function addXP(userId, amount) {
   const user = getUser(userId);
   user.xp += amount;
   saveData();
 }
 
+// Complete a mission for a user
 function completeMission(userId, missionId) {
   const user = getUser(userId);
   if (!user.missionsCompleted.includes(missionId)) {
     user.missionsCompleted.push(missionId);
-    if(data.missions[missionId]) {
+    if (data.missions[missionId]) {
       addXP(userId, data.missions[missionId].xpReward || 0);
     }
     saveData();
@@ -46,6 +51,7 @@ function completeMission(userId, missionId) {
   return false;
 }
 
+// Buy a shop item
 function buyItem(userId, itemId) {
   const user = getUser(userId);
   const item = data.shopItems[itemId];
@@ -59,36 +65,49 @@ function buyItem(userId, itemId) {
   return { success: true };
 }
 
+// Initialize mission list
 function initMissions(missionsList) {
   data.missions = {};
   for (const mission of missionsList) {
     data.missions[mission.id] = {
       description: mission.description,
       xpReward: mission.xpReward,
-      active: mission.active || true,
+      active: mission.active !== false, // true by default
     };
   }
   saveData();
 }
 
+// Initialize shop items list
 function initShopItems(shopList) {
   data.shopItems = {};
   for (const item of shopList) {
     data.shopItems[item.id] = {
       name: item.name,
       description: item.description,
-      priceXP: item.price, // consistent naming
+      priceXP: item.price, // standard field
     };
   }
   saveData();
 }
 
+// Convert shopItems object to array for looping
+function getShopItems() {
+  return Object.entries(data.shopItems).map(([id, item]) => ({
+    id,
+    ...item,
+  }));
+}
+
+// Return all users
 function getAllUsers() {
   return data.users;
 }
 
+// Initial load
 loadData();
 
+// Export everything
 module.exports = {
   getUser,
   addXP,
@@ -96,6 +115,7 @@ module.exports = {
   buyItem,
   initMissions,
   initShopItems,
+  getShopItems,
   saveData,
   data,
   getAllUsers,
