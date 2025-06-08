@@ -52,6 +52,21 @@ const voiceTimers = new Map();
 
 require("./invite-tracker")(client);
 
+// Level calculate karne wali function
+function calculateLevel(xp) {
+  if (xp < 1000) return 1;
+
+  let level = 1;
+  let requiredXP = 1000;
+
+  while (xp >= requiredXP) {
+    level++;
+    requiredXP *= 2;
+  }
+
+  return level;
+}
+
 client.on("ready", () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
 });
@@ -108,10 +123,27 @@ client.on("messageCreate", async (message) => {
     dataManager.addXP(userId, wordCount);
   }
 
+  // !xp command
   if (msgLower === "!xp") {
     return message.channel.send(`${message.author.username}, aapke paas abhi **${userData.xp || 0} XP** hai.`);
   }
 
+  // !xplevel command (new)
+  if (msgLower.startsWith("!xplevel")) {
+    let targetUser;
+    if (message.mentions.users.size > 0) {
+      targetUser = message.mentions.users.first();
+    } else {
+      targetUser = message.author;
+    }
+
+    const targetData = dataManager.getUser(targetUser.id);
+    const level = calculateLevel(targetData.xp || 0);
+
+    return message.channel.send(`${targetUser.username} ka XP level hai: **${level}**!`);
+  }
+
+  // !topxp command
   if (msgLower === "!topxp") {
     const allUsers = dataManager.getAllUsers();
     const topUsers = Object.entries(allUsers)
@@ -129,6 +161,7 @@ client.on("messageCreate", async (message) => {
     });
   }
 
+  // !givexp command
   if (msgLower.startsWith("!givexp")) {
     if (message.author.id !== OWNER_ID) return;
     const member = message.mentions.members.first();
@@ -140,6 +173,7 @@ client.on("messageCreate", async (message) => {
     return message.channel.send(`✅ ${member.user.username} ko ${amount} XP diya gaya hai!`);
   }
 
+  // !giftxp command
   if (msgLower.startsWith("!giftxp")) {
     const member = message.mentions.members.first();
     const amount = parseInt(args[2]);
@@ -154,70 +188,151 @@ client.on("messageCreate", async (message) => {
     return message.channel.send(`✅ Aapne ${member.user.username} ko ${amount} XP gift kiya!`);
   }
 
+  // !shop command - updated with Lottery Ticket
   if (msgLower === "!shop") {
-    const item = {
-      priceXP: 1000,
-      name: "Nickname Color",
-      description: "Change your nickname color to Red, Blue, or Green."
-    };
+    const items = [
+      {
+        name: "Lottery Ticket",
+        priceXP: 100,
+        description: "Buy Lottery Tickets to win random XP prizes! Use `!buy lottery <amount>`",
+      },
+      {
+        name: "Nickname Color",
+        priceXP: 1000,
+        description: "Change your nickname color to Red, Blue, or Green. Use `!buy nickname <red|blue|green>`",
+      },
+    ];
+
+    const shopDesc = items
+      .map(
+        (item, i) =>
+          `**${i + 1}. ${item.name}**\nPrice: ${item.priceXP} XP\n${item.description}`
+      )
+      .join("\n\n");
 
     const shopEmbed = new EmbedBuilder()
       .setTitle("\uD83D\uDED2 SANKHI XP SHOP")
-      .setDescription("Use `!buy nickname <red|blue|green>` to change your nickname color.")
-      .addFields([
-        {
-          name: `\uD83C\uDD94 nickname — Nickname Color (Red, Blue, Green)`,
-          value: `\uD83D\uDCB8 ${item.priceXP} XP\n\uD83D\uDCCC ${item.description}`,
-        }
-      ])
+      .setDescription(shopDesc)
       .setColor("Blue");
 
     return message.channel.send({ embeds: [shopEmbed] });
   }
 
+  // !buy command - handle lottery and nickname
   if (msgLower.startsWith("!buy")) {
     const itemIdRaw = args[1]?.toLowerCase();
     const option = args[2]?.toLowerCase();
+    const amount = parseInt(args[2]) || 1; // for lottery tickets amount
 
-    if (!itemIdRaw || !option) {
-      return message.reply("❌ Usage: !buy nickname <red|blue|green>");
+    if (!itemIdRaw) {
+      return message.reply("❌ Usage: !buy <item> [option/amount]");
     }
 
-    if (itemIdRaw !== "nickname") {
-      return message.reply("❌ Currently only `nickname` item is available to buy.");
+    // Buy lottery tickets
+    if (itemIdRaw === "lottery") {
+      // amount is args[2]
+      if (isNaN(amount) || amount < 1) {
+        return message.reply("❌ Usage: !buy lottery <amount>");
+      }
+
+      const pricePerTicket = 100;
+      const totalCost = pricePerTicket * amount;
+
+      if ((userData.xp || 0) < totalCost) {
+        return message.reply(`❌ Aapke paas ${totalCost} XP nahi hai!`);
+      }
+
+      userData.xp -= totalCost;
+      userData.lotteryTickets = (userData.lotteryTickets || 0) + amount;
+
+      dataManager.saveData();
+
+      return message.channel.send(
+        `✅ Aapne ${amount} Lottery Ticket(s) kharid liye! Total Tickets: ${userData.lotteryTickets}`
+      );
     }
 
-    if (!["red", "blue", "green"].includes(option)) {
-      return message.reply("❌ Please choose: `red`, `blue`, ya `green`");
+    // Buy nickname color
+    if (itemIdRaw === "nickname") {
+      if (!option) {
+        return message.reply("❌ Usage: !buy nickname <red|blue|green>");
+      }
+
+      if (!["red", "blue", "green"].includes(option)) {
+        return message.reply("❌ Please choose: `red`, `blue`, ya `green`");
+      }
+
+      const itemCost = 1000;
+      if ((userData.xp || 0) < itemCost) {
+        return message.reply(`❌ Aapke paas kaafi XP nahi hai! Required: ${itemCost} XP`);
+      }
+
+      userData.xp -= itemCost;
+      dataManager.saveData();
+
+      const colorMap = {
+        red: "Colour - red",
+        blue: "Colour - blue",
+        green: "Colour - green",
+      };
+
+      const role = message.guild.roles.cache.find(r => r.name.toLowerCase() === colorMap[option].toLowerCase());
+      if (!role) {
+        return message.reply(`❌ Role \"${colorMap[option]}\" server me nahi mila.`);
+      }
+
+      const allColorRoles = Object.values(colorMap);
+      await message.member.roles.remove(
+        message.member.roles.cache.filter(r => allColorRoles.includes(r.name))
+      );
+
+      await message.member.roles.add(role);
+
+      return message.channel.send(`✅ Aapko **${colorMap[option]}** role mil gaya hai!`);
     }
 
-    const itemCost = 1000;
-    if ((userData.xp || 0) < itemCost) {
-      return message.reply(`❌ Aapke paas kaafi XP nahi hai! Required: ${itemCost} XP`);
+    return message.reply("❌ Invalid item.");
+  }
+
+  // !lottery or !spin command to use lottery tickets
+  if (msgLower === "!lottery" || msgLower === "!spin") {
+    if ((userData.lotteryTickets || 0) < 1) {
+      return message.reply("❌ Aapke paas koi Lottery Ticket nahi hai. Pehle !buy lottery karke ticket khariden.");
     }
 
-    userData.xp -= itemCost;
+    userData.lotteryTickets -= 1;
+
+    // Prize chances and ranges:
+    // 50% chance -> 0 to 50 XP
+    // 25% chance -> 50 to 100 XP
+    // 12.5% chance -> 100 to 1000 XP
+    // 10% chance -> 1000 to 2500 XP
+    // 2.5% chance -> 2500 to 5000 XP
+
+    const rand = Math.random() * 100;
+    let prizeXP = 0;
+
+    if (rand < 50) {
+      // 0-50 XP
+      prizeXP = Math.floor(Math.random() * 51);
+    } else if (rand < 75) {
+      // 50-100 XP
+      prizeXP = 50 + Math.floor(Math.random() * 51);
+    } else if (rand < 87.5) {
+      // 100-1000 XP
+      prizeXP = 100 + Math.floor(Math.random() * 901);
+    } else if (rand < 97.5) {
+      // 1000-2500 XP
+      prizeXP = 1000 + Math.floor(Math.random() * 1501);
+    } else {
+      // 2500-5000 XP
+      prizeXP = 2500 + Math.floor(Math.random() * 2501);
+    }
+
+    dataManager.addXP(userId, prizeXP);
     dataManager.saveData();
 
-    const colorMap = {
-      red: "Colour - red",
-      blue: "Colour - blue",
-      green: "Colour - green",
-    };
-
-    const role = message.guild.roles.cache.find(r => r.name.toLowerCase() === colorMap[option].toLowerCase());
-    if (!role) {
-      return message.reply(`❌ Role \"${colorMap[option]}\" server me nahi mila.`);
-    }
-
-    const allColorRoles = Object.values(colorMap);
-    await message.member.roles.remove(
-      message.member.roles.cache.filter(r => allColorRoles.includes(r.name))
-    );
-
-    await message.member.roles.add(role);
-
-    return message.channel.send(`✅ Aapko **${colorMap[option]}** role mil gaya hai!`);
+    return message.channel.send(`🎉 Aapne lottery jeeta: **${prizeXP} XP!** 🎊`);
   }
 });
 
